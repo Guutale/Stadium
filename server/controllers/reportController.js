@@ -9,7 +9,7 @@ exports.getDashboardStats = async (req, res) => {
         const totalBookings = await Booking.countDocuments();
         const totalStadiums = await Stadium.countDocuments();
         const totalMatches = await Match.countDocuments();
-        const totalUsers = await User.countDocuments();
+        const totalUsers = await User.countDocuments({ isDeleted: { $ne: true } });
 
         // Calculate tickets sold from bookings
         const ticketsResult = await Booking.aggregate([
@@ -103,6 +103,80 @@ exports.getStadiumPopularity = async (req, res) => {
         ]);
 
         res.json(data);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+};
+exports.getDetailedReports = async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        let dateFilter = {};
+
+        if (startDate && endDate) {
+            dateFilter = {
+                createdAt: {
+                    $gte: new Date(startDate),
+                    $lte: new Date(endDate)
+                }
+            };
+        }
+
+        // 1. Booking Status Distribution
+        const bookingStatus = await Booking.aggregate([
+            { $match: dateFilter },
+            { $group: { _id: '$status', count: { $sum: 1 } } }
+        ]);
+
+        // 2. Revenue by Payment Method
+        const paymentMethodRevenue = await Payment.aggregate([
+            {
+                $match: {
+                    status: 'success',
+                    ...(startDate && endDate ? {
+                        date: { $gte: new Date(startDate), $lte: new Date(endDate) }
+                    } : {})
+                }
+            },
+            { $group: { _id: '$method', total: { $sum: '$amount' } } }
+        ]);
+
+        // 3. User Registration Trend (Last 6 Months)
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+        const userGrowth = await User.aggregate([
+            { $match: { createdAt: { $gte: sixMonthsAgo } } },
+            {
+                $group: {
+                    _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { _id: 1 } }
+        ]);
+
+        // 4. Booking Trends (Daily for selected range or last 30 days)
+        const trendStart = startDate ? new Date(startDate) : new Date(new Date().setDate(new Date().getDate() - 30));
+        const bookingTrends = await Booking.aggregate([
+            { $match: { createdAt: { $gte: trendStart } } },
+            {
+                $group: {
+                    _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { _id: 1 } }
+        ]);
+
+
+        res.json({
+            bookingStatus,
+            paymentMethodRevenue,
+            userGrowth,
+            bookingTrends
+        });
+
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');

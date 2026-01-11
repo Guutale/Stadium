@@ -69,6 +69,11 @@ const SeatSelection = () => {
 
     const totalPrice = calculateTotal();
 
+    const matchDate = new Date(match.date);
+    const [hours, minutes] = match.time.split(':');
+    matchDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    const isStarted = new Date() > matchDate;
+
     return (
         <div className="container mx-auto px-4 py-8">
             <h1 className="text-3xl font-bold mb-8 text-center text-primary">Select Your Seats</h1>
@@ -108,10 +113,10 @@ const SeatSelection = () => {
                         </div>
                         <button
                             onClick={handleBooking}
-                            disabled={selectedSeats.length === 0}
-                            className={`w-full py-4 rounded-lg font-bold text-lg transition shadow-lg ${selectedSeats.length > 0 ? 'bg-primary text-white hover:bg-blue-900' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                            disabled={selectedSeats.length === 0 || isStarted}
+                            className={`w-full py-4 rounded-lg font-bold text-lg transition shadow-lg ${selectedSeats.length > 0 && !isStarted ? 'bg-primary text-white hover:bg-blue-900' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                         >
-                            {isAuthenticated ? 'Proceed to Payment' : 'Login to Book'}
+                            {isStarted ? 'Match Started - Booking Closed' : (isAuthenticated ? 'Proceed to Payment' : 'Login to Book')}
                         </button>
                     </div>
                 </div>

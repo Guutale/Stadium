@@ -10,13 +10,16 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import VerifyEmail from './pages/VerifyEmail';
 import StadiumList from './pages/StadiumList';
 import StadiumDetails from './pages/StadiumDetails';
 import MatchDetails from './pages/MatchDetails';
 import SeatSelection from './pages/SeatSelection';
 import MyBookings from './pages/MyBookings';
+import UserProfile from './pages/UserProfile';
 // Lazy load Payment to prevent Stripe from loading on other pages
 const Payment = React.lazy(() => import('./pages/Payment'));
+const BookingSuccess = React.lazy(() => import('./pages/BookingSuccess'));
 
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
@@ -27,6 +30,8 @@ import AdminUsers from './pages/admin/AdminUsers';
 import AdminPayments from './pages/admin/AdminPayments';
 import AdminReports from './pages/admin/AdminReports';
 import AdminSeatView from './pages/admin/AdminSeatView';
+import AdminProfile from './pages/admin/AdminProfile';
+
 
 function App() {
   return (
@@ -49,11 +54,18 @@ function App() {
                   <Payment />
                 </Suspense>
               } />
+              <Route path="payment/success/:id" element={
+                <Suspense fallback={<div>Loading...</div>}>
+                  <BookingSuccess />
+                </Suspense>
+              } />
               <Route path="my-bookings" element={<MyBookings />} />
+              <Route path="profile" element={<UserProfile />} />
             </Route>
 
             <Route path="login" element={<Login />} />
             <Route path="register" element={<Register />} />
+            <Route path="verify-email/:token" element={<VerifyEmail />} />
           </Route>
 
           {/* Admin Routes - AdminLayout usually handles role checks */}
@@ -67,6 +79,8 @@ function App() {
             <Route path="users" element={<AdminUsers />} />
             <Route path="payments" element={<AdminPayments />} />
             <Route path="reports" element={<AdminReports />} />
+            <Route path="profile" element={<AdminProfile />} />
+
           </Route>
         </Routes>
       </Router>

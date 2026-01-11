@@ -1,10 +1,27 @@
 const Booking = require('../models/Booking');
 const Payment = require('../models/Payment');
 
+const Match = require('../models/Match');
+
 // Create Booking (User)
 exports.createBooking = async (req, res) => {
     try {
         const { match, seats, totalAmount } = req.body;
+
+        // Check if match exists and hasn't started
+        const matchInfo = await Match.findById(match);
+        if (!matchInfo) {
+            return res.status(404).json({ msg: 'Match not found' });
+        }
+
+        // Combine date and time to create a full Date object
+        const matchDateTime = new Date(matchInfo.date);
+        const [hours, minutes] = matchInfo.time.split(':');
+        matchDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+        if (new Date() > matchDateTime) {
+            return res.status(400).json({ msg: 'Match has already started. Booking is closed.' });
+        }
 
         // Ensure user is attached by auth middleware
         const newBooking = new Booking({

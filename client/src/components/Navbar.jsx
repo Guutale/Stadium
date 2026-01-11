@@ -28,6 +28,7 @@ const Navbar = () => {
                                     Admin Dashboard
                                 </Link>
                             )}
+                            <Link to="/profile" className="hover:text-secondary transition">My Profile</Link>
                             <Link to="/my-bookings" className="hover:text-secondary transition">My Bookings</Link>
                             <button onClick={onLogout} className="text-white hover:text-red-400 transition">
                                 Logout

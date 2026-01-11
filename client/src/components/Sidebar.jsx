@@ -15,6 +15,7 @@ const Sidebar = () => {
         { path: '/admin/users', label: 'User Management', icon: '👥' },
         { path: '/admin/payments', label: 'Payment Management', icon: '💳' },
         { path: '/admin/reports', label: 'Report Analysis', icon: '📈' },
+        { path: '/admin/profile', label: 'Profile', icon: '🅿️' },
     ];
 
     const handleLogout = () => {

@@ -4,6 +4,7 @@ const auth = require('../middleware/auth');
 const paymentController = require('../controllers/paymentController');
 
 router.post('/create-payment-intent', auth, paymentController.createPaymentIntent);
+router.post('/simulate', auth, paymentController.simulateCardPayment);
 // @route   POST api/payments/evc (Demo EVC payment)
 router.post('/evc', auth, paymentController.processEVCPayment);
 router.post('/', auth, paymentController.recordPayment);

@@ -10,5 +10,6 @@ const reportController = require('../controllers/reportController');
 router.get('/stats', auth, reportController.getDashboardStats);
 router.get('/revenue', auth, reportController.getRevenueChart);
 router.get('/popularity', auth, reportController.getStadiumPopularity);
+router.get('/detailed', auth, reportController.getDetailedReports);
 
 module.exports = router;

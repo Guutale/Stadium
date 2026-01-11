@@ -33,7 +33,13 @@ const userSchema = new mongoose.Schema({
     },
     deletedAt: {
         type: Date
-    }
+    },
+    isVerified: {
+        type: Boolean,
+        default: false
+    },
+    verificationToken: String,
+    verificationTokenExpire: Date
 }, {
     timestamps: true // Automatically adds createdAt and updatedAt fields
 });

@@ -1,6 +1,9 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const Booking = require('../models/Booking');
 const Payment = require('../models/Payment');
+const User = require('../models/User');
+const ticketService = require('../utils/ticketService');
+const sendEmail = require('../utils/emailService');
 
 exports.createPaymentIntent = async (req, res) => {
     try {
@@ -95,5 +98,68 @@ exports.recordPayment = async (req, res) => {
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');
+    }
+};
+
+// Simulate Card Payment (No Stripe)
+exports.simulateCardPayment = async (req, res) => {
+    console.log("► simulateCardPayment START");
+    try {
+        console.log("► req.body:", req.body);
+        console.log("► req.user:", req.user);
+
+        const { bookingId, amount } = req.body;
+
+        if (!req.user || !req.user.id) {
+            console.error("► Missing req.user or req.user.id");
+            return res.status(401).json({ message: 'User not authenticated properly' });
+        }
+
+        // Security Check: Is User Verified?
+        console.log("► Finding user:", req.user.id);
+        const user = await User.findById(req.user.id);
+
+        if (!user) {
+            console.error("► User not found in DB");
+            return res.status(401).json({ message: 'User not found' });
+        }
+        console.log("► User verification status:", user.isVerified);
+
+        if (!user.isVerified) {
+            console.warn("► User not verified");
+            return res.status(403).json({ success: false, message: 'Email not verified. Please verify your email before booking.' });
+        }
+
+        console.log("► Finding booking:", bookingId);
+        const booking = await Booking.findById(bookingId);
+        if (!booking) {
+            console.error("► Booking not found");
+            return res.status(404).json({ success: false, message: 'Booking not found' });
+        }
+
+        // Simulate successful payment
+        console.log("► Updating booking status");
+        booking.paymentStatus = 'paid';
+        await booking.save();
+
+        // Record fake payment
+        console.log("► Creating payment record");
+        const payment = new Payment({
+            user: req.user.id,
+            booking: booking._id,
+            amount: booking.totalAmount,
+            method: 'card', // Use valid enum value
+            status: 'success',
+            transactionId: `SIM${Date.now()}`,
+            date: new Date()
+        });
+        await payment.save();
+
+        console.log("► Payment success. Transaction:", payment.transactionId);
+        res.json({ success: true, transactionId: payment.transactionId });
+    } catch (err) {
+        console.error("► Payment Simulation Error:", err);
+        console.error("► Stack:", err.stack);
+        res.status(500).json({ success: false, message: 'Server Error: ' + err.message, stack: err.stack });
     }
 };

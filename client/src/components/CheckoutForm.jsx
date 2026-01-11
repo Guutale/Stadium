@@ -1,86 +1,88 @@
 import React, { useState } from 'react';
-import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
+import { CardElement } from '@stripe/react-stripe-js';
 import api from '../utils/api';
 import { useNavigate } from 'react-router-dom';
 
 const CheckoutForm = ({ bookingId, amount }) => {
-    const stripe = useStripe();
-    const elements = useElements();
     const navigate = useNavigate();
-    const [error, setError] = useState(null);
     const [processing, setProcessing] = useState(false);
+    const [error, setError] = useState(null);
+    const [isCardComplete, setIsCardComplete] = useState(false);
 
     const handleSubmit = async (event) => {
         event.preventDefault();
 
-        if (!stripe || !elements) {
+        if (!isCardComplete) {
+            setError('Please enter complete card details.');
             return;
         }
 
         setProcessing(true);
+        setError(null);
 
         try {
-            // 1. Create PaymentIntent on Backend
-            const { data: { clientSecret } } = await api.post('/payments/create-payment-intent', {
-                amount: amount * 100 // Convert to cents
+            // FAKE PAYMENT CALL (Simulation)
+            const res = await api.post('/payments/simulate', {
+                bookingId,
+                amount
             });
 
-            // 2. Confirm Card Payment
-            const result = await stripe.confirmCardPayment(clientSecret, {
-                payment_method: {
-                    card: elements.getElement(CardElement),
-                }
-            });
-
-            if (result.error) {
-                setError(result.error.message);
-                setProcessing(false);
+            if (res.data.success) {
+                // alert('Payment Successful (NO MONEY CHARGED)'); // Alert removed for success page redirection
+                navigate(`/payment/success/${bookingId}`);
             } else {
-                if (result.paymentIntent.status === 'succeeded') {
-                    // 3. Record success in backend
-                    await api.post('/payments', {
-                        bookingId,
-                        amount,
-                        method: 'card',
-                        transactionId: result.paymentIntent.id
-                    });
-
-                    alert('Payment Successful!');
-                    navigate('/my-bookings');
-                }
+                setError('Payment Failed');
             }
+
         } catch (err) {
             console.error(err);
-            setError('Payment failed. Please try again.');
-            setProcessing(false);
+            const errorMessage = err.response?.data?.message || 'Server Error. Try again.';
+            setError(errorMessage);
         }
+
+        setProcessing(false);
     };
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="p-4 border rounded-lg bg-gray-50">
-                <CardElement options={{
-                    style: {
-                        base: {
-                            fontSize: '16px',
-                            color: '#424770',
-                            '::placeholder': {
-                                color: '#aab7c4',
+
+            <div className={`p-4 border rounded-lg bg-white shadow-inner ${error ? 'border-red-300' : 'border-gray-300'}`}>
+                <CardElement
+                    options={{
+                        style: {
+                            base: {
+                                fontSize: '16px',
+                                color: '#424770',
+                                '::placeholder': { color: '#aab7c4' },
                             },
+                            invalid: { color: '#9e2146' },
                         },
-                        invalid: {
-                            color: '#9e2146',
-                        },
-                    },
-                }} />
+                    }}
+                    onChange={(e) => {
+                        setIsCardComplete(e.complete);
+                        if (e.error) {
+                            setError(e.error.message);
+                        } else {
+                            setError(null);
+                        }
+                    }}
+                />
             </div>
-            {error && <div className="text-red-500 text-sm">{error}</div>}
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                <h4 className="font-bold text-blue-800 text-sm mb-1">✔️ Secure Checkout</h4>
+                <p className="text-xs text-blue-600">No real payment will be deducted • Instant ticket delivery</p>
+            </div>
+
+            {error && <div className="text-red-500 text-sm bg-red-50 p-3 rounded">{error}</div>}
+
             <button
                 type="submit"
-                disabled={!stripe || processing}
-                className={`w-full py-4 rounded-lg font-bold text-white text-lg shadow-lg transform transition hover:scale-[1.02] ${processing ? 'bg-gray-400' : 'bg-primary hover:bg-blue-900'}`}
+                disabled={processing || !isCardComplete}
+                className={`w-full py-4 rounded-lg font-bold text-white text-lg shadow-lg transform transition hover:scale-[1.02] ${processing || !isCardComplete ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-blue-900'
+                    }`}
             >
-                {processing ? 'Processing...' : `Pay $${amount}`}
+                {processing ? 'Processing Payment...' : 'Confirm Payment'}
             </button>
         </form>
     );
