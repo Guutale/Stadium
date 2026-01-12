@@ -8,6 +8,18 @@ const matchSchema = new mongoose.Schema({
     time: { type: String, required: true }, // e.g., "19:00"
     description: { type: String },
     status: { type: String, enum: ['upcoming', 'ongoing', 'completed', 'cancelled'], default: 'upcoming' },
+    competitionType: {
+        type: String,
+        enum: ['Champions League', 'La Liga', 'Copa del Rey', 'Friendly Match', 'Other'],
+        default: 'Other'
+    },
+    matchRules: { type: String },
+    isFinal: { type: Boolean, default: false }, // Marks if this is a final/championship match
+    isRefunded: { type: Boolean, default: false }, // Marks if refunds have been processed
+    cancelledAt: { type: Date },
+    cancellationReason: { type: String },
+    rescheduledFrom: { type: mongoose.Schema.Types.ObjectId, ref: 'Match' }, // Original match if this is a rescheduled match
+    rescheduledTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Match' }, // New match if this match was rescheduled
     vipPrice: { type: Number, required: true },
     regularPrice: { type: Number, required: true },
     ticketsSold: { type: Number, default: 0 },

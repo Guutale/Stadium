@@ -2,6 +2,7 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 import UserLayout from './components/layouts/UserLayout';
 import AdminLayout from './components/layouts/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -36,54 +37,56 @@ import AdminProfile from './pages/admin/AdminProfile';
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<UserLayout />}>
-            <Route index element={<Home />} />
+      <NotificationProvider>
+        <Router>
+          <Routes>
+            <Route path="/" element={<UserLayout />}>
+              <Route index element={<Home />} />
 
-            {/* Public route - anyone can view match details */}
-            <Route path="matches/:id" element={<MatchDetails />} />
+              {/* Public route - anyone can view match details */}
+              <Route path="matches/:id" element={<MatchDetails />} />
 
-            {/* Protected User Routes - require login */}
-            <Route element={<ProtectedRoute />}>
-              <Route path="stadiums" element={<StadiumList />} />
-              <Route path="stadiums/:id" element={<StadiumDetails />} />
-              <Route path="matches/:id/book" element={<SeatSelection />} />
-              <Route path="payment/:id" element={
-                <Suspense fallback={<div>Loading Payment...</div>}>
-                  <Payment />
-                </Suspense>
-              } />
-              <Route path="payment/success/:id" element={
-                <Suspense fallback={<div>Loading...</div>}>
-                  <BookingSuccess />
-                </Suspense>
-              } />
-              <Route path="my-bookings" element={<MyBookings />} />
-              <Route path="profile" element={<UserProfile />} />
+              {/* Protected User Routes - require login */}
+              <Route element={<ProtectedRoute />}>
+                <Route path="stadiums" element={<StadiumList />} />
+                <Route path="stadiums/:id" element={<StadiumDetails />} />
+                <Route path="matches/:id/book" element={<SeatSelection />} />
+                <Route path="payment/:id" element={
+                  <Suspense fallback={<div>Loading Payment...</div>}>
+                    <Payment />
+                  </Suspense>
+                } />
+                <Route path="payment/success/:id" element={
+                  <Suspense fallback={<div>Loading...</div>}>
+                    <BookingSuccess />
+                  </Suspense>
+                } />
+                <Route path="my-bookings" element={<MyBookings />} />
+                <Route path="profile" element={<UserProfile />} />
+              </Route>
+
+              <Route path="login" element={<Login />} />
+              <Route path="register" element={<Register />} />
+              <Route path="verify-email/:token" element={<VerifyEmail />} />
             </Route>
 
-            <Route path="login" element={<Login />} />
-            <Route path="register" element={<Register />} />
-            <Route path="verify-email/:token" element={<VerifyEmail />} />
-          </Route>
+            {/* Admin Routes - AdminLayout usually handles role checks */}
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<Navigate to="dashboard" />} />
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="stadiums" element={<AdminStadiums />} />
+              <Route path="matches" element={<AdminMatches />} />
+              <Route path="matches/:id/seats" element={<AdminSeatView />} />
+              <Route path="bookings" element={<AdminBookings />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="payments" element={<AdminPayments />} />
+              <Route path="reports" element={<AdminReports />} />
+              <Route path="profile" element={<AdminProfile />} />
 
-          {/* Admin Routes - AdminLayout usually handles role checks */}
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<Navigate to="dashboard" />} />
-            <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="stadiums" element={<AdminStadiums />} />
-            <Route path="matches" element={<AdminMatches />} />
-            <Route path="matches/:id/seats" element={<AdminSeatView />} />
-            <Route path="bookings" element={<AdminBookings />} />
-            <Route path="users" element={<AdminUsers />} />
-            <Route path="payments" element={<AdminPayments />} />
-            <Route path="reports" element={<AdminReports />} />
-            <Route path="profile" element={<AdminProfile />} />
-
-          </Route>
-        </Routes>
-      </Router>
+            </Route>
+          </Routes>
+        </Router>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

@@ -14,13 +14,44 @@ exports.createBooking = async (req, res) => {
             return res.status(404).json({ msg: 'Match not found' });
         }
 
+        // Check if match is cancelled
+        if (matchInfo.status === 'cancelled') {
+            if (matchInfo.rescheduledTo) {
+                return res.status(400).json({
+                    msg: 'This match has been cancelled and rescheduled. Please book the new match.',
+                    rescheduledMatchId: matchInfo.rescheduledTo
+                });
+            }
+            return res.status(400).json({ msg: 'This match has been cancelled. Booking is not available.' });
+        }
+
         // Combine date and time to create a full Date object
         const matchDateTime = new Date(matchInfo.date);
         const [hours, minutes] = matchInfo.time.split(':');
         matchDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
-        if (new Date() > matchDateTime) {
-            return res.status(400).json({ msg: 'Match has already started. Booking is closed.' });
+        // Calculate booking closure time (10 minutes before match start)
+        const closureTime = new Date(matchDateTime.getTime() - 10 * 60 * 1000);
+        const now = new Date();
+
+        // Check if booking is closed (10 minutes before start or match has started)
+        if (now >= closureTime) {
+            const minutesUntilStart = Math.round((matchDateTime - now) / 60000);
+
+            if (minutesUntilStart <= 0) {
+                return res.status(400).json({
+                    msg: 'Match has already started. Booking is closed.',
+                    matchStarted: true,
+                    bookingClosed: true
+                });
+            } else {
+                return res.status(400).json({
+                    msg: `Booking is closed. Match starts in ${minutesUntilStart} minute(s). Bookings close 10 minutes before match start.`,
+                    bookingClosed: true,
+                    minutesUntilStart,
+                    closureReason: 'Bookings close 10 minutes before match start to ensure smooth operations.'
+                });
+            }
         }
 
         // Ensure user is attached by auth middleware
@@ -29,11 +60,23 @@ exports.createBooking = async (req, res) => {
             match,
             seats,
             totalAmount,
-            paymentStatus: 'pending'
+            paymentStatus: 'pending',
+            bookingStatus: 'active'
         });
 
         const booking = await newBooking.save();
         res.json(booking);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
+// Get Match Bookings (Admin)
+exports.getMatchBookings = async (req, res) => {
+    try {
+        const bookings = await Booking.find({ match: req.params.matchId }).populate('user', 'name email');
+        res.json(bookings);
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');
@@ -45,7 +88,9 @@ exports.getUserBookings = async (req, res) => {
     try {
         const bookings = await Booking.find({ user: req.user.id })
             .populate('match')
-            .populate({ path: 'match', populate: { path: 'stadium' } });
+            .populate({ path: 'match', populate: { path: 'stadium' } })
+            .populate('originalMatch')
+            .populate('rescheduledTo');
         res.json(bookings);
     } catch (err) {
         console.error(err.message);
@@ -64,27 +109,6 @@ exports.getAllBookings = async (req, res) => {
             })
             .sort({ bookingDate: -1 });
         res.json(bookings);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
-    }
-};
-
-// Delete Booking (Admin)
-exports.deleteBooking = async (req, res) => {
-    try {
-        const booking = await Booking.findById(req.params.id);
-
-        if (!booking) {
-            return res.status(404).json({ msg: 'Booking not found' });
-        }
-
-        // Delete related Payment records
-        await Payment.deleteMany({ booking: req.params.id });
-
-        await booking.deleteOne();
-
-        res.json({ msg: 'Booking removed' });
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');
@@ -156,6 +180,51 @@ exports.updateBookingStatus = async (req, res) => {
             { new: true }
         );
         res.json(booking);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
+// Delete Booking (Admin or User)
+exports.deleteBooking = async (req, res) => {
+    try {
+        const booking = await Booking.findById(req.params.id).populate('match');
+
+        if (!booking) {
+            return res.status(404).json({ msg: 'Booking not found' });
+        }
+
+        // Check user authorization
+        if (booking.user.toString() !== req.user.id && req.user.role !== 'admin') {
+            return res.status(401).json({ msg: 'User not authorized' });
+        }
+
+        // Logic check: Only allow delete if match is finished OR booking is cancelled/refunded
+        // Admins can delete anytime
+        if (req.user.role !== 'admin') {
+            const isCancelled = booking.bookingStatus === 'cancelled' || booking.bookingStatus === 'refunded' || booking.paymentStatus === 'failed';
+
+            let isFinished = false;
+            if (booking.match) {
+                const matchDate = new Date(booking.match.date);
+                if (booking.match.time) {
+                    const [hours, minutes] = booking.match.time.split(':');
+                    matchDate.setHours(parseInt(hours) + 2, parseInt(minutes)); // Approx finish
+                }
+                isFinished = new Date() > matchDate;
+            } else {
+                isFinished = true; // Match deleted
+            }
+
+            if (!isCancelled && !isFinished) {
+                return res.status(400).json({ msg: 'Active bookings cannot be deleted. Only past or cancelled bookings can be removed.' });
+            }
+        }
+
+        await Booking.findByIdAndDelete(req.params.id);
+        res.json({ msg: 'Booking deleted successfully' });
+
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');

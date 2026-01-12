@@ -20,7 +20,7 @@ router.get('/', [auth, admin], bookingController.getAllBookings);
 // Update Booking Status (Admin)
 router.put('/:id', [auth, admin], bookingController.updateBookingStatus);
 
-// Delete Booking (Admin)
-router.delete('/:id', [auth, admin], bookingController.deleteBooking);
+// Delete Booking (Admin or User for history)
+router.delete('/:id', auth, bookingController.deleteBooking);
 
 module.exports = router;

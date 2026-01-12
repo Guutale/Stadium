@@ -79,6 +79,7 @@ export const AuthProvider = ({ children }) => {
                 payload: res.data
             });
             // loadUser();
+            return res.data;
         } catch (err) {
             dispatch({
                 type: 'LOGIN_FAIL',

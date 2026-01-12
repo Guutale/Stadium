@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 
 const Login = () => {
     const [formData, setFormData] = useState({ email: '', password: '' });
-    const { login, isAuthenticated } = useContext(AuthContext);
+    const { login, isAuthenticated, user } = useContext(AuthContext);
     const navigate = useNavigate();
     const [error, setError] = useState(null);
 
@@ -14,15 +14,23 @@ const Login = () => {
 
     useEffect(() => {
         if (isAuthenticated) {
-            navigate('/');
+            if (user?.role === 'admin') {
+                navigate('/admin/dashboard');
+            } else {
+                navigate('/');
+            }
         }
-    }, [isAuthenticated, navigate]);
+    }, [isAuthenticated, navigate, user]);
 
     const onSubmit = async e => {
         e.preventDefault();
         try {
-            await login(formData);
-            navigate('/');
+            const res = await login(formData);
+            if (res.user?.role === 'admin') {
+                navigate('/admin/dashboard');
+            } else {
+                navigate('/');
+            }
         } catch (err) {
             const msg = err.response?.data?.message || err.message || 'Login failed';
             setError(msg);

@@ -7,9 +7,9 @@ const AdminDashboard = () => {
         totalBookings: 0,
         totalStadiums: 0,
         totalMatches: 0,
-        ticketsSold: 0, 
+        ticketsSold: 0,
         totalRevenue: 0,
-        totalUsers: 0 
+        totalUsers: 0
     });
     const [revenueData, setRevenueData] = useState([]);
     const [audienceData, setAudienceData] = useState([]);
@@ -57,11 +57,13 @@ const AdminDashboard = () => {
             </div>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
                 <KPICard title="Total Users" value={stats.totalUsers} color="bg-blue-600" />
-                <KPICard title="Total Booking" value={stats.totalBookings} color="bg-green-600" />
-                <KPICard title="Total Revenue" value={`$${stats.totalRevenue ? stats.totalRevenue.toLocaleString() : 0}`} color="bg-orange-500" />
-                <KPICard title="Ticket Sold" value={stats.ticketsSold} color="bg-red-500" />
+                <KPICard title="Total Bookings" value={stats.totalBookings} color="bg-green-600" />
+                <KPICard title="Revenue" value={`$${stats.totalRevenue ? stats.totalRevenue.toLocaleString() : 0}`} color="bg-orange-500" />
+                <KPICard title="Tickets Sold" value={stats.ticketsSold} color="bg-teal-500" />
+                <KPICard title="Refunded" value={`$${stats.totalRefunded ? stats.totalRefunded.toLocaleString() : 0}`} color="bg-red-500" />
+                <KPICard title="Cancelled" value={stats.totalCancelledMatches} color="bg-gray-600" />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
@@ -110,40 +112,67 @@ const AdminDashboard = () => {
                 </div>
             </div>
 
-            {/* Recent Bookings Table Snippet */}
-            <div className="bg-admin-card rounded-xl shadow-lg border border-gray-700 overflow-hidden">
-                <div className="p-6 border-b border-gray-700 flex justify-between items-center">
-                    <h3 className="text-white font-bold">Top Events</h3>
-                    <button className="text-sm text-gray-400 hover:text-white">See all</button>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                {/* Recent Cancellations Table */}
+                <div className="bg-admin-card rounded-xl shadow-lg border border-gray-700 overflow-hidden">
+                    <div className="p-6 border-b border-gray-700 flex justify-between items-center">
+                        <h3 className="text-white font-bold text-red-400">Recent Cancellations</h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-gray-400">
+                            <thead className="bg-gray-800 text-gray-200 uppercase text-xs">
+                                <tr>
+                                    <th className="px-6 py-3">Match</th>
+                                    <th className="px-6 py-3">Cancelled On</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-700">
+                                {stats.recentCancellations && stats.recentCancellations.length > 0 ? (
+                                    stats.recentCancellations.map(match => (
+                                        <tr key={match._id} className="hover:bg-gray-800 transition">
+                                            <td className="px-6 py-4 font-medium text-white">
+                                                {match.homeTeam} vs {match.awayTeam}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                {new Date(match.updatedAt).toLocaleString()}
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="2" className="px-6 py-4 text-center italic">No recent cancellations</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-gray-400">
-                        <thead className="bg-gray-800 text-gray-200 uppercase text-xs">
-                            <tr>
-                                <th className="px-6 py-3">Transaction</th>
-                                <th className="px-6 py-3">Event</th>
-                                <th className="px-6 py-3">Stadium</th>
-                                <th className="px-6 py-3">Ticket Sold</th>
-                                <th className="px-6 py-3">Revenue</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-700">
-                            <tr className="hover:bg-gray-800 transition">
-                                <td className="px-6 py-4">TR-12334</td>
-                                <td className="px-6 py-4">Sports</td>
-                                <td className="px-6 py-4">Camp Nou</td>
-                                <td className="px-6 py-4">45,000</td>
-                                <td className="px-6 py-4">$300,000</td>
-                            </tr>
-                            <tr className="hover:bg-gray-800 transition">
-                                <td className="px-6 py-4">TR-1345</td>
-                                <td className="px-6 py-4">Sports</td>
-                                <td className="px-6 py-4">Bernabeu</td>
-                                <td className="px-6 py-4">32,000</td>
-                                <td className="px-6 py-4">$250,000</td>
-                            </tr>
-                        </tbody>
-                    </table>
+
+                {/* Top Events Snippet (Placeholder) */}
+                <div className="bg-admin-card rounded-xl shadow-lg border border-gray-700 overflow-hidden">
+                    <div className="p-6 border-b border-gray-700 flex justify-between items-center">
+                        <h3 className="text-white font-bold">Top Events</h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-gray-400">
+                            <thead className="bg-gray-800 text-gray-200 uppercase text-xs">
+                                <tr>
+                                    <th className="px-6 py-3">Event</th>
+                                    <th className="px-6 py-3">Revenue</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-700">
+                                <tr className="hover:bg-gray-800 transition">
+                                    <td className="px-6 py-4">El Clasico</td>
+                                    <td className="px-6 py-4">$300,000</td>
+                                </tr>
+                                <tr className="hover:bg-gray-800 transition">
+                                    <td className="px-6 py-4">Derby</td>
+                                    <td className="px-6 py-4">$250,000</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

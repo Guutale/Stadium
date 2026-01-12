@@ -25,13 +25,32 @@ exports.getDashboardStats = async (req, res) => {
         ]);
         const totalRevenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
 
+        // NEW: Total Refunded Amount
+        const refundedResult = await Booking.aggregate([
+            { $match: { paymentStatus: 'refunded' } },
+            { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+        ]);
+        const totalRefunded = refundedResult.length > 0 ? refundedResult[0].total : 0;
+
+        // NEW: Total Canceled Matches
+        const totalCancelledMatches = await Match.countDocuments({ status: 'cancelled' });
+
+        // NEW: Recent Cancellations (Limit 5)
+        const recentCancellations = await Match.find({ status: 'cancelled' })
+            .sort({ updatedAt: -1 })
+            .limit(5)
+            .select('homeTeam awayTeam date status updatedAt');
+
         res.json({
             totalBookings,
             totalStadiums,
             totalMatches,
             totalUsers,
             ticketsSold,
-            totalRevenue
+            totalRevenue,
+            totalRefunded,
+            totalCancelledMatches,
+            recentCancellations
         });
     } catch (err) {
         console.error(err.message);
