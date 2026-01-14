@@ -1,14 +1,26 @@
 const Booking = require('../models/Booking');
 const Payment = require('../models/Payment');
-
 const Match = require('../models/Match');
+const SystemSetting = require('../models/SystemSetting');
+const { v4: uuidv4 } = require('uuid');
+const { logAction } = require('./auditLogController');
+
+// Helper to add status history
+const addStatusHistory = (booking, status, actionType, note, user) => {
+    booking.statusHistory.push({
+        status,
+        actionType,
+        timestamp: new Date(),
+        note: note || `Status changed to ${status}`
+    });
+};
 
 // Create Booking (User)
 exports.createBooking = async (req, res) => {
     try {
         const { match, seats, totalAmount } = req.body;
 
-        // Check if match exists and hasn't started
+        // Check if match exists
         const matchInfo = await Match.findById(match);
         if (!matchInfo) {
             return res.status(404).json({ msg: 'Match not found' });
@@ -25,19 +37,21 @@ exports.createBooking = async (req, res) => {
             return res.status(400).json({ msg: 'This match has been cancelled. Booking is not available.' });
         }
 
-        // Combine date and time to create a full Date object
+        // Get Booking Closure Time from Settings (default 10)
+        const bookingConfig = await SystemSetting.getSetting('booking_config');
+        const closeMinutes = bookingConfig?.closeMinutesBeforeStart || 10;
+
+        // Combine date and time
         const matchDateTime = new Date(matchInfo.date);
         const [hours, minutes] = matchInfo.time.split(':');
         matchDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
-        // Calculate booking closure time (10 minutes before match start)
-        const closureTime = new Date(matchDateTime.getTime() - 10 * 60 * 1000);
+        // Calculate closure
+        const closureTime = new Date(matchDateTime.getTime() - closeMinutes * 60 * 1000);
         const now = new Date();
 
-        // Check if booking is closed (10 minutes before start or match has started)
         if (now >= closureTime) {
             const minutesUntilStart = Math.round((matchDateTime - now) / 60000);
-
             if (minutesUntilStart <= 0) {
                 return res.status(400).json({
                     msg: 'Match has already started. Booking is closed.',
@@ -46,22 +60,29 @@ exports.createBooking = async (req, res) => {
                 });
             } else {
                 return res.status(400).json({
-                    msg: `Booking is closed. Match starts in ${minutesUntilStart} minute(s). Bookings close 10 minutes before match start.`,
+                    msg: `Booking is closed. Match starts in ${minutesUntilStart} minute(s). Bookings close ${closeMinutes} minutes before match start.`,
                     bookingClosed: true,
                     minutesUntilStart,
-                    closureReason: 'Bookings close 10 minutes before match start to ensure smooth operations.'
+                    closureReason: `Bookings close ${closeMinutes} minutes before match start.`
                 });
             }
         }
 
-        // Ensure user is attached by auth middleware
+        // Create Booking
         const newBooking = new Booking({
             user: req.user.id,
             match,
             seats,
             totalAmount,
             paymentStatus: 'pending',
-            bookingStatus: 'active'
+            bookingStatus: 'active',
+            ticketCode: uuidv4(), // Generate unique ticket code
+            statusHistory: [{
+                status: 'pending', // Payment pending
+                actionType: 'BOOKING_CREATED',
+                timestamp: new Date(),
+                note: 'Booking created, waiting for payment.'
+            }]
         });
 
         const booking = await newBooking.save();
@@ -157,10 +178,15 @@ exports.cancelBooking = async (req, res) => {
             return res.status(400).json({ msg: 'Cannot cancel processed booking' });
         }
 
-        booking.paymentStatus = 'failed'; // Or 'cancelled' if enum allows, but requirement said "fails payment... return selected seats". 'failed' is safe.
-        // Actually enum was ['pending', 'paid', 'failed', 'refunded']. 'failed' works.
-        // If I want 'cancelled', I should update enum. But 'failed' effectively releases seats given the matchController change.
-        // Let's use 'failed' or 'refunded'. 'failed' implies it didn't go through.
+        booking.paymentStatus = 'failed';
+        booking.bookingStatus = 'cancelled';
+
+        booking.statusHistory.push({
+            status: 'cancelled',
+            actionType: 'USER_CANCELLED',
+            timestamp: new Date(),
+            note: 'User cancelled pending booking.'
+        });
 
         await booking.save();
         res.json({ msg: 'Booking cancelled' });
@@ -174,11 +200,37 @@ exports.cancelBooking = async (req, res) => {
 exports.updateBookingStatus = async (req, res) => {
     try {
         const { status } = req.body; // e.g., 'paid', 'cancelled'
-        const booking = await Booking.findByIdAndUpdate(
-            req.params.id,
-            { $set: { paymentStatus: status } },
-            { new: true }
-        );
+
+        const booking = await Booking.findById(req.params.id);
+        if (!booking) {
+            return res.status(404).json({ msg: 'Booking not found' });
+        }
+
+        const oldStatus = booking.paymentStatus;
+        booking.paymentStatus = status;
+
+        if (status === 'paid') {
+            booking.statusHistory.push({
+                status: 'paid',
+                actionType: 'PAYMENT_COMPLETED',
+                timestamp: new Date(),
+                note: 'Payment success confirmed.'
+            });
+        }
+
+        await booking.save();
+
+        // Log if admin
+        if (req.user && req.user.role === 'admin') {
+            await logAction({
+                adminUser: req.user.id,
+                action: 'OTHER',
+                details: `Booking ${booking._id} status updated from ${oldStatus} to ${status}`,
+                targetResource: `Booking: ${booking._id}`,
+                ipAddress: req.ip
+            });
+        }
+
         res.json(booking);
     } catch (err) {
         console.error(err.message);
@@ -224,6 +276,68 @@ exports.deleteBooking = async (req, res) => {
 
         await Booking.findByIdAndDelete(req.params.id);
         res.json({ msg: 'Booking deleted successfully' });
+
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
+// Verify Ticket (Scanner)
+exports.verifyTicket = async (req, res) => {
+    try {
+        const { ticketCode } = req.body;
+        
+        const booking = await Booking.findOne({ ticketCode }).populate('match').populate('user', 'username email');
+        
+        if (!booking) {
+             return res.status(404).json({ valid: false, msg: 'Invalid Ticket' });
+        }
+
+        if (booking.bookingStatus !== 'active' && booking.bookingStatus !== 'completed') {
+             return res.status(400).json({ valid: false, msg: `Ticket is ${booking.bookingStatus}` });
+        }
+
+        if (booking.isTicketVerified) {
+             return res.status(400).json({ 
+                valid: false, 
+                msg: 'Ticket already used', 
+                verifiedAt: booking.ticketVerifiedAt 
+            });
+        }
+
+        // Verify match date (optional, ensure it's today)
+        const matchDate = new Date(booking.match.date);
+        const now = new Date();
+        const isSameDay = matchDate.getDate() === now.getDate() &&
+                          matchDate.getMonth() === now.getMonth() &&
+                          matchDate.getFullYear() === now.getFullYear();
+        
+        // if (!isSameDay) {
+        //      return res.status(400).json({ valid: false, msg: 'Ticket is for a different date' });
+        // }
+
+        booking.isTicketVerified = true;
+        booking.ticketVerifiedAt = new Date();
+        booking.statusHistory.push({
+            status: 'admitted',
+            actionType: 'TICKET_VERIFIED',
+            timestamp: new Date(),
+            note: 'Ticket verified at gate.'
+        });
+
+        await booking.save();
+
+        res.json({ 
+            valid: true, 
+            msg: 'Ticket Verified', 
+            booking: {
+                id: booking._id,
+                user: booking.user.username,
+                match: `${booking.match.homeTeam} vs ${booking.match.awayTeam}`,
+                seats: booking.seats
+            }
+        });
 
     } catch (err) {
         console.error(err.message);

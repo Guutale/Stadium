@@ -6,37 +6,71 @@ const User = require('../models/User');
 
 exports.getDashboardStats = async (req, res) => {
     try {
-        const totalBookings = await Booking.countDocuments();
+        const { startDate, endDate } = req.query;
+        let dateFilter = {};
+        let endBoundary = new Date(); // Default if not provided
+
+        if (startDate && endDate) {
+            endBoundary = new Date(endDate);
+            endBoundary.setHours(23, 59, 59, 999);
+            dateFilter = {
+                createdAt: {
+                    $gte: new Date(startDate),
+                    $lte: endBoundary
+                }
+            };
+        }
+
+        const totalBookings = await Booking.countDocuments(dateFilter);
+        // Stadiums usually are static assets, but if requested, we could filter by creation date. 
+        // For now, keeping stadiums total static as "Total Stadiums in System" unless creation date is meant. 
+        // Based on "strict filter", let's filter purely transactional data (bookings, matches, users, payments).
         const totalStadiums = await Stadium.countDocuments();
-        const totalMatches = await Match.countDocuments();
-        const totalUsers = await User.countDocuments({ isDeleted: { $ne: true } });
+
+        // Filter matches by date
+        let matchFilter = {};
+        if (startDate && endDate) {
+            matchFilter = {
+                date: {
+                    $gte: new Date(startDate),
+                    $lte: endBoundary
+                }
+            };
+        }
+        const totalMatches = await Match.countDocuments(matchFilter);
+
+        const userFilter = startDate && endDate ? {
+            createdAt: { $gte: new Date(startDate), $lte: endBoundary },
+            isDeleted: { $ne: true }
+        } : { isDeleted: { $ne: true } };
+        const totalUsers = await User.countDocuments(userFilter);
 
         // Calculate tickets sold from bookings
         const ticketsResult = await Booking.aggregate([
-            { $match: { paymentStatus: 'paid' } },
+            { $match: { paymentStatus: 'paid', ...dateFilter } },
             { $group: { _id: null, total: { $sum: { $size: '$seats' } } } }
         ]);
         const ticketsSold = ticketsResult.length > 0 ? ticketsResult[0].total : 0;
 
         // Sum total revenue from successful bookings
         const revenueResult = await Booking.aggregate([
-            { $match: { paymentStatus: 'paid' } },
+            { $match: { paymentStatus: 'paid', ...dateFilter } },
             { $group: { _id: null, total: { $sum: '$totalAmount' } } }
         ]);
         const totalRevenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
 
         // NEW: Total Refunded Amount
         const refundedResult = await Booking.aggregate([
-            { $match: { paymentStatus: 'refunded' } },
+            { $match: { paymentStatus: 'refunded', ...dateFilter } },
             { $group: { _id: null, total: { $sum: '$totalAmount' } } }
         ]);
         const totalRefunded = refundedResult.length > 0 ? refundedResult[0].total : 0;
 
         // NEW: Total Canceled Matches
-        const totalCancelledMatches = await Match.countDocuments({ status: 'cancelled' });
+        const totalCancelledMatches = await Match.countDocuments({ status: 'cancelled', ...matchFilter });
 
         // NEW: Recent Cancellations (Limit 5)
-        const recentCancellations = await Match.find({ status: 'cancelled' })
+        const recentCancellations = await Match.find({ status: 'cancelled', ...matchFilter })
             .sort({ updatedAt: -1 })
             .limit(5)
             .select('homeTeam awayTeam date status updatedAt');
@@ -60,12 +94,25 @@ exports.getDashboardStats = async (req, res) => {
 
 exports.getRevenueChart = async (req, res) => {
     try {
-        // Daily revenue for the last 7 days
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const { startDate, endDate } = req.query;
+        let matchStage = { status: 'success' };
+
+        if (startDate && endDate) {
+            const endBoundary = new Date(endDate);
+            endBoundary.setHours(23, 59, 59, 999);
+            matchStage.date = {
+                $gte: new Date(startDate),
+                $lte: endBoundary
+            };
+        } else {
+            // Default to last 7 days if no range
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+            matchStage.date = { $gte: sevenDaysAgo };
+        }
 
         const data = await Payment.aggregate([
-            { $match: { status: 'success', date: { $gte: sevenDaysAgo } } },
+            { $match: matchStage },
             {
                 $group: {
                     _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
@@ -132,11 +179,20 @@ exports.getDetailedReports = async (req, res) => {
         const { startDate, endDate } = req.query;
         let dateFilter = {};
 
+        // Define unified boundaries
+        const startBoundary = startDate ? new Date(startDate) : new Date(new Date().setDate(new Date().getDate() - 30));
+        let endBoundary = new Date();
+
+        if (endDate) {
+            endBoundary = new Date(endDate);
+            endBoundary.setHours(23, 59, 59, 999);
+        }
+
         if (startDate && endDate) {
             dateFilter = {
                 createdAt: {
                     $gte: new Date(startDate),
-                    $lte: new Date(endDate)
+                    $lte: endBoundary
                 }
             };
         }
@@ -153,7 +209,7 @@ exports.getDetailedReports = async (req, res) => {
                 $match: {
                     status: 'success',
                     ...(startDate && endDate ? {
-                        date: { $gte: new Date(startDate), $lte: new Date(endDate) }
+                        date: { $gte: new Date(startDate), $lte: endBoundary }
                     } : {})
                 }
             },
@@ -161,11 +217,13 @@ exports.getDetailedReports = async (req, res) => {
         ]);
 
         // 3. User Registration Trend (Last 6 Months)
-        const sixMonthsAgo = new Date();
-        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        // Note: Unless user wants this filtered too? Usually trends show history. 
+        // User asked "Prevent data from outside the selected range from appearing".
+        // Use user range if provided.
+        const trendStart = startDate ? new Date(startDate) : new Date(new Date().setMonth(new Date().getMonth() - 6));
 
         const userGrowth = await User.aggregate([
-            { $match: { createdAt: { $gte: sixMonthsAgo } } },
+            { $match: { createdAt: { $gte: trendStart, ...(endDate ? { $lte: endBoundary } : {}) } } },
             {
                 $group: {
                     _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
@@ -175,10 +233,9 @@ exports.getDetailedReports = async (req, res) => {
             { $sort: { _id: 1 } }
         ]);
 
-        // 4. Booking Trends (Daily for selected range or last 30 days)
-        const trendStart = startDate ? new Date(startDate) : new Date(new Date().setDate(new Date().getDate() - 30));
+        // 4. Booking Trends
         const bookingTrends = await Booking.aggregate([
-            { $match: { createdAt: { $gte: trendStart } } },
+            { $match: { createdAt: { $gte: startBoundary, ...(endDate ? { $lte: endBoundary } : {}) } } },
             {
                 $group: {
                     _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },

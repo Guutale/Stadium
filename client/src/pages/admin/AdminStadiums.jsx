@@ -9,9 +9,9 @@ const AdminStadiums = () => {
         name: '',
         location: '',
         capacity: '',
+        vipCapacity: '',
+        regularCapacity: '',
         description: '',
-        vipPrice: '',
-        regularPrice: '',
         imageUrl: ''
     });
     const [searchQuery, setSearchQuery] = useState('');
@@ -49,9 +49,9 @@ const AdminStadiums = () => {
             name: stadium.name,
             location: stadium.location,
             capacity: stadium.capacity,
+            vipCapacity: stadium.vipCapacity || '',
+            regularCapacity: stadium.regularCapacity || '',
             description: stadium.description,
-            vipPrice: stadium.vipPrice || '',
-            regularPrice: stadium.regularPrice || '',
             imageUrl: stadium.images && stadium.images.length > 0 ? stadium.images[0] : ''
         });
         setShowForm(true);
@@ -59,10 +59,19 @@ const AdminStadiums = () => {
 
     const handleCancel = () => {
         setShowForm(false);
-        setFormData({ name: '', location: '', capacity: '', description: '', vipPrice: '', regularPrice: '', imageUrl: '' });
+        setFormData({ name: '', location: '', capacity: '', vipCapacity: '', regularCapacity: '', description: '', imageUrl: '' });
     };
 
-    const handleChange = e => setFormData({ ...formData, [e.target.name]: e.target.value });
+    const handleChange = e => {
+        const { name, value } = e.target;
+        setFormData(prev => {
+            const updated = { ...prev, [name]: value };
+            if (name === 'vipCapacity' || name === 'regularCapacity') {
+                updated.capacity = (parseInt(updated.vipCapacity || 0) + parseInt(updated.regularCapacity || 0)).toString();
+            }
+            return updated;
+        });
+    };
 
     const handleSubmit = async e => {
         e.preventDefault();
@@ -111,10 +120,16 @@ const AdminStadiums = () => {
                     <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <input name="name" value={formData.name} onChange={handleChange} placeholder="Stadium Name" className="p-3 bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-400 focus:ring-2 focus:ring-admin-accent" required />
                         <input name="location" value={formData.location} onChange={handleChange} placeholder="Location" className="p-3 bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-400 focus:ring-2 focus:ring-admin-accent" required />
-                        <input name="capacity" type="number" value={formData.capacity} onChange={handleChange} placeholder="Capacity" className="p-3 bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-400 focus:ring-2 focus:ring-admin-accent" required />
+
+                        <input name="vipCapacity" type="number" value={formData.vipCapacity} onChange={handleChange} placeholder="VIP Capacity" className="p-3 bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-400 focus:ring-2 focus:ring-admin-accent" required />
+                        <input name="regularCapacity" type="number" value={formData.regularCapacity} onChange={handleChange} placeholder="Regular Capacity" className="p-3 bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-400 focus:ring-2 focus:ring-admin-accent" required />
+
+                        <div className="relative">
+                            <label className="absolute -top-2 left-2 bg-gray-800 px-1 text-xs text-gray-400">Total Capacity (Auto)</label>
+                            <input name="capacity" type="number" value={formData.capacity} readOnly placeholder="Total Capacity" className="w-full p-3 bg-gray-900 border border-gray-600 rounded text-gray-400 cursor-not-allowed" />
+                        </div>
+
                         <input name="description" value={formData.description} onChange={handleChange} placeholder="Description" className="p-3 bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-400 focus:ring-2 focus:ring-admin-accent" />
-                        <input name="vipPrice" type="number" value={formData.vipPrice} onChange={handleChange} placeholder="VIP Base Price" className="p-3 bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-400 focus:ring-2 focus:ring-admin-accent" required />
-                        <input name="regularPrice" type="number" value={formData.regularPrice} onChange={handleChange} placeholder="Regular Base Price" className="p-3 bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-400 focus:ring-2 focus:ring-admin-accent" required />
                         <input name="imageUrl" value={formData.imageUrl} onChange={handleChange} placeholder="Stadium Image URL" className="p-3 bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-400 focus:ring-2 focus:ring-admin-accent md:col-span-2" />
                         <button type="submit" className="col-span-1 md:col-span-2 bg-green-600 text-white py-3 rounded font-bold hover:bg-green-700 transition">{formData._id ? 'Update Stadium' : 'Save Stadium'}</button>
                     </form>

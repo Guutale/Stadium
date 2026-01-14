@@ -56,18 +56,20 @@ const StadiumDetails = () => {
                 <p className="text-gray-500 text-lg">No upcoming matches scheduled for this stadium.</p>
             ) : (
                 <div className="grid md:grid-cols-2 gap-6">
-                    {matches.map(match => (
-                        <div key={match._id} className="bg-white p-6 rounded-xl shadow-md border-l-4 border-secondary hover:shadow-xl transition flex justify-between items-center">
-                            <div>
-                                <h3 className="text-xl font-bold mb-2">{match.homeTeam} <span className="text-secondary">vs</span> {match.awayTeam}</h3>
-                                <p className="text-gray-600">📅 {new Date(match.date).toLocaleDateString()} | ⏰ {match.time}</p>
-                                <p className="text-sm text-gray-500 mt-2">{match.description}</p>
+                    {matches
+                        .filter(match => match.status === 'upcoming' && !match.matchStarted && !match.bookingClosed)
+                        .map(match => (
+                            <div key={match._id} className="bg-white p-6 rounded-xl shadow-md border-l-4 border-secondary hover:shadow-xl transition flex justify-between items-center">
+                                <div>
+                                    <h3 className="text-xl font-bold mb-2">{match.homeTeam} <span className="text-secondary">vs</span> {match.awayTeam}</h3>
+                                    <p className="text-gray-600">📅 {new Date(match.date).toLocaleDateString()} | ⏰ {match.time}</p>
+                                    <p className="text-sm text-gray-500 mt-2">{match.description}</p>
+                                </div>
+                                <Link to={`/matches/${match._id}`} className="bg-primary text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-900 transition">
+                                    Book Ticket
+                                </Link>
                             </div>
-                            <Link to={`/matches/${match._id}`} className="bg-primary text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-900 transition">
-                                Book Ticket
-                            </Link>
-                        </div>
-                    ))}
+                        ))}
                 </div>
             )}
         </div>

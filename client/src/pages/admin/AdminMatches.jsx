@@ -15,7 +15,7 @@ const AdminMatches = () => {
         vipPrice: '',
         regularPrice: '',
         description: '',
-        competitionType: 'Other',
+        competitionType: '',
         matchRules: '',
         isFinal: false
     });
@@ -70,7 +70,7 @@ const AdminMatches = () => {
             vipPrice: match.vipPrice || '',
             regularPrice: match.regularPrice || '',
             description: match.description || '',
-            competitionType: match.competitionType || 'Other',
+            competitionType: match.competitionType || '',
             matchRules: match.matchRules || '',
             isFinal: match.isFinal || false
         });
@@ -79,7 +79,7 @@ const AdminMatches = () => {
 
     const handleCancel = () => {
         setShowForm(false);
-        setFormData({ stadium: '', homeTeam: '', awayTeam: '', date: '', time: '', vipPrice: '', regularPrice: '', description: '', competitionType: 'Other', matchRules: '', isFinal: false });
+        setFormData({ stadium: '', homeTeam: '', awayTeam: '', date: '', time: '', vipPrice: '', regularPrice: '', description: '', competitionType: '', matchRules: '', isFinal: false });
     };
 
     const handleChange = e => {
@@ -231,13 +231,7 @@ const AdminMatches = () => {
                         <input name="vipPrice" type="number" value={formData.vipPrice} onChange={handleChange} placeholder="VIP Price ($)" className="p-3 bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-400 focus:ring-2 focus:ring-admin-accent" required />
                         <input name="regularPrice" type="number" value={formData.regularPrice} onChange={handleChange} placeholder="Regular Price ($)" className="p-3 bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-400 focus:ring-2 focus:ring-admin-accent" required />
 
-                        <select name="competitionType" value={formData.competitionType} onChange={handleChange} className="p-3 bg-gray-800 border border-gray-600 rounded text-white focus:ring-2 focus:ring-admin-accent">
-                            <option value="Other">Other (Custom)</option>
-                            <option value="Champions League">Champions League</option>
-                            <option value="La Liga">La Liga</option>
-                            <option value="Copa del Rey">Copa del Rey</option>
-                            <option value="Friendly Match">Friendly Match</option>
-                        </select>
+                        <input name="competitionType" value={formData.competitionType} onChange={handleChange} placeholder="Competition / League Name" className="p-3 bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-400 focus:ring-2 focus:ring-admin-accent" required />
 
                         <input name="description" value={formData.description} onChange={handleChange} placeholder="Description (e.g. Finals)" className="p-3 bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-400 focus:ring-2 focus:ring-admin-accent" />
 
@@ -249,6 +243,8 @@ const AdminMatches = () => {
                             className="col-span-1 md:col-span-2 p-3 bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-400 focus:ring-2 focus:ring-admin-accent"
                             rows="4"
                         />
+
+
 
                         <button type="submit" className="col-span-1 md:col-span-2 bg-green-600 text-white py-3 rounded font-bold hover:bg-green-700 transition">{formData._id ? 'Update Event' : 'Save Event'}</button>
                     </form>
@@ -327,34 +323,56 @@ const AdminMatches = () => {
                                                     <span className="text-gray-400 font-bold text-sm italic py-1 px-4 border border-gray-600 rounded bg-gray-900">Refunded</span>
                                                 ) : (
                                                     <>
-                                                        <button onClick={() => handleEdit(match)} className="text-blue-400 hover:text-blue-300 font-bold text-sm">Edit</button>
-                                                        <button onClick={() => handleDelete(match._id)} className="text-red-400 hover:text-red-300 font-bold text-sm">Delete</button>
-                                                        <a href={`/admin/matches/${match._id}/seats`} className="text-yellow-400 hover:text-yellow-300 font-bold text-sm">Seats</a>
-
-                                                        {/* Cancellation & Reschedule Actions */}
-                                                        {match.status === 'upcoming' && (
-                                                            <button
-                                                                onClick={() => openCancelModal(match)}
-                                                                className="text-orange-400 hover:text-orange-300 font-bold text-sm"
-                                                            >
-                                                                Cancel
-                                                            </button>
-                                                        )}
-
-                                                        {match.status === 'cancelled' && !match.rescheduledTo && (
+                                                        {/* Logic for Action Buttons */}
+                                                        {match.status === 'completed' ? (
+                                                            <span className="text-gray-500 font-bold text-sm italic py-1 px-4 border border-gray-700 rounded bg-gray-900">Ended</span>
+                                                        ) : (
                                                             <>
-                                                                <button
-                                                                    onClick={() => openRescheduleModal(match)}
-                                                                    className="text-purple-400 hover:text-purple-300 font-bold text-sm"
-                                                                >
-                                                                    Reschedule
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleProcessRefund(match)}
-                                                                    className="text-green-400 hover:text-green-300 font-bold text-sm"
-                                                                >
-                                                                    Refund
-                                                                </button>
+                                                                {match.status !== 'ongoing' && match.status !== 'completed' && match.status !== 'cancelled' && (
+                                                                    <>
+                                                                        <button onClick={() => handleEdit(match)} className="text-blue-400 hover:text-blue-300 font-bold text-sm">Edit</button>
+                                                                        <button onClick={() => handleDelete(match._id)} className="text-red-400 hover:text-red-300 font-bold text-sm">Delete</button>
+                                                                    </>
+                                                                )}
+
+                                                                <a href={`/admin/matches/${match._id}/seats`} className="text-yellow-400 hover:text-yellow-300 font-bold text-sm">Seats</a>
+
+                                                                {/* Cancellation & Reschedule Actions */}
+                                                                {match.status === 'upcoming' && (
+                                                                    <button
+                                                                        onClick={() => openCancelModal(match)}
+                                                                        className="text-orange-400 hover:text-orange-300 font-bold text-sm"
+                                                                    >
+                                                                        Cancel
+                                                                    </button>
+                                                                )}
+
+                                                                {/* ONGOING: Show Actions (Seats + Cancel only) */}
+                                                                {(match.status === 'ongoing' || match.matchStarted) && (
+                                                                    <button
+                                                                        onClick={() => openCancelModal(match)}
+                                                                        className="text-orange-400 hover:text-orange-300 font-bold text-sm"
+                                                                    >
+                                                                        Cancel
+                                                                    </button>
+                                                                )}
+
+                                                                {match.status === 'cancelled' && !match.rescheduledTo && (
+                                                                    <>
+                                                                        <button
+                                                                            onClick={() => openRescheduleModal(match)}
+                                                                            className="text-purple-400 hover:text-purple-300 font-bold text-sm"
+                                                                        >
+                                                                            Reschedule
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleProcessRefund(match)}
+                                                                            className="text-green-400 hover:text-green-300 font-bold text-sm"
+                                                                        >
+                                                                            Refund
+                                                                        </button>
+                                                                    </>
+                                                                )}
                                                             </>
                                                         )}
                                                     </>

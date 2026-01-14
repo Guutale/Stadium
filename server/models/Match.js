@@ -6,15 +6,20 @@ const matchSchema = new mongoose.Schema({
     awayTeam: { type: String, required: true },
     date: { type: Date, required: true },
     time: { type: String, required: true }, // e.g., "19:00"
+    duration: { type: Number, default: 120 }, // Match duration in minutes (including breaks)
     description: { type: String },
-    status: { type: String, enum: ['upcoming', 'ongoing', 'completed', 'cancelled'], default: 'upcoming' },
+
+    status: {
+        type: String,
+        enum: ['upcoming', 'booking_closed', 'ongoing', 'completed', 'cancelled', 'rescheduled', 'finished'],
+        default: 'upcoming'
+    },
     competitionType: {
         type: String,
-        enum: ['Champions League', 'La Liga', 'Copa del Rey', 'Friendly Match', 'Other'],
-        default: 'Other'
+        required: true
     },
     matchRules: { type: String },
-    isFinal: { type: Boolean, default: false }, // Marks if this is a final/championship match
+    isFinal: { type: Boolean, default: false },
     isRefunded: { type: Boolean, default: false }, // Marks if refunds have been processed
     cancelledAt: { type: Date },
     cancellationReason: { type: String },

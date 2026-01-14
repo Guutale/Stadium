@@ -63,6 +63,12 @@ app.use('/api/matches', require('./routes/matches'));
 app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/reports', require('./routes/reports'));
+app.use('/api/audit-logs', require('./routes/auditLogs'));
+app.use('/api/settings', require('./routes/systemSettings'));
+
+// Initialize Scheduler
+const initializeScheduler = require('./utils/scheduler');
+initializeScheduler();
 
 app.get('/', (req, res) => {
   res.send('Online Stadium Management System API');

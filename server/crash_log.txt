@@ -1,0 +1,25 @@
+Attempting to require server.js...
+[dotenv@17.2.3] injecting env (3) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+CAUGHT ERROR:
+{
+  "message": "Cannot find module 'uuid'\nRequire stack:\n- C:\\Users\\ENG Cabdisamad\\Desktop\\Online stadium Antigravity\\server\\controllers\\bookingController.js\n- C:\\Users\\ENG Cabdisamad\\Desktop\\Online stadium Antigravity\\server\\routes\\bookings.js\n- C:\\Users\\ENG Cabdisamad\\Desktop\\Online stadium Antigravity\\server\\server.js\n- C:\\Users\\ENG Cabdisamad\\Desktop\\Online stadium Antigravity\\server\\debug_crash_catcher.js",
+  "code": "MODULE_NOT_FOUND",
+  "stack": "Error: Cannot find module 'uuid'\nRequire stack:\n- C:\\Users\\ENG Cabdisamad\\Desktop\\Online stadium Antigravity\\server\\controllers\\bookingController.js\n- C:\\Users\\ENG Cabdisamad\\Desktop\\Online stadium Antigravity\\server\\routes\\bookings.js\n- C:\\Users\\ENG Cabdisamad\\Desktop\\Online stadium Antigravity\\server\\server.js\n- C:\\Users\\ENG Cabdisamad\\Desktop\\Online stadium Antigravity\\server\\debug_crash_catcher.js\n    at Module._resolveFilename (node:internal/modules/cjs/loader:1421:15)\n    at defaultResolveImpl (node:internal/modules/cjs/loader:1059:19)\n    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1064:22)\n    at Module._load (node:internal/modules/cjs/loader:1227:37)\n    at TracingChannel.traceSync (node:diagnostics_channel:328:14)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)\n    at Module.require (node:internal/modules/cjs/loader:1504:12)\n    at require (node:internal/modules/helpers:152:16)\n    at Object.<anonymous> (C:\\Users\\ENG Cabdisamad\\Desktop\\Online stadium Antigravity\\server\\controllers\\bookingController.js:5:24)\n    at Module._compile (node:internal/modules/cjs/loader:1761:14)"
+}
+✅ MongoDB Connected: 127.0.0.1
+📂 Database Name: authdb
+📊 Total Users in DB: 9
+👥 Users found: [
+  'test_verification@gmail.com (user)',
+  'cc@gmail.com (user)',
+  'aa@gmail.com (user)',
+  'guutale@gmail.com (admin)',
+  'ba@gmail.com (user)',
+  'cbdisamadfast@gmail.com (user)',
+  'yonisabdikhadir@gmail.com (user)',
+  'malik@gmail.com (user)',
+  'testuser@test.com (user)'
+]
+
+🚀 Starting Express server...
+

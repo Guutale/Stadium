@@ -25,8 +25,8 @@ const AdminReports = () => {
             const query = dateRange.start && dateRange.end ? `?startDate=${dateRange.start}&endDate=${dateRange.end}` : '';
 
             const [statsRes, revRes, detailedRes] = await Promise.all([
-                api.get('/reports/stats'),
-                api.get('/reports/revenue'),
+                api.get(`/reports/stats${query}`),
+                api.get(`/reports/revenue${query}`),
                 api.get(`/reports/detailed${query}`)
             ]);
 
@@ -90,7 +90,7 @@ const AdminReports = () => {
                         onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
                         className="bg-gray-700 text-white px-3 py-1 rounded text-sm focus:outline-none"
                     />
-                    <button onClick={() => setDateRange({ start: '', end: '' })} className="text-xs text-blue-400 hover:text-blue-300">Clear</button>
+                    <button onClick={() => setDateRange({ start: '', end: '' })} className="text-xs text-blue-400 hover:text-blue-300 cursor-pointer">Clear</button>
                 </div>
             </div>
 
@@ -100,7 +100,7 @@ const AdminReports = () => {
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`pb-3 px-4 capitalize font-bold transition whitespace-nowrap ${activeTab === tab ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-400 hover:text-white'}`}
+                        className={`pb-3 px-4 capitalize font-bold transition whitespace-nowrap cursor-pointer ${activeTab === tab ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-400 hover:text-white'}`}
                     >
                         {tab}
                     </button>
@@ -123,7 +123,7 @@ const AdminReports = () => {
                         <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg">
                             <div className="flex justify-between items-center mb-6">
                                 <h3 className="text-xl font-bold text-white">Revenue Trend (Last 7 Days)</h3>
-                                <button onClick={() => handleExport('revenue')} className="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-white flex items-center gap-2">
+                                <button onClick={() => handleExport('revenue')} className="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-white flex items-center gap-2 cursor-pointer">
                                     <Download size={14} /> CSV
                                 </button>
                             </div>
@@ -177,7 +177,7 @@ const AdminReports = () => {
                 <div className="bg-gray-800 p-8 rounded-xl border border-gray-700 shadow-lg">
                     <div className="flex justify-between items-center mb-8">
                         <h3 className="text-xl font-bold text-white">Daily Booking Trends</h3>
-                        <button onClick={() => handleExport('bookings')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-bold flex items-center gap-2">
+                        <button onClick={() => handleExport('bookings')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-bold flex items-center gap-2 cursor-pointer">
                             <Download size={18} /> Export Data
                         </button>
                     </div>

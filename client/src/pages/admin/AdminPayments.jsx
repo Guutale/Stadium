@@ -87,7 +87,15 @@ const AdminPayments = () => {
                                 const matchesSearch = (payment._id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                                     (payment.stripePaymentIntentId || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                                     (payment.user?.email || '').toLowerCase().includes(searchQuery.toLowerCase());
-                                const matchesDate = !searchDate || new Date(payment.bookingDate).toISOString().split('T')[0] === searchDate;
+                                const paymentDate = new Date(payment.bookingDate);
+                                const searchDateObj = new Date(searchDate);
+                                // Compare YYYY-MM-DD parts locally
+                                const matchesDate = !searchDate || (
+                                    paymentDate.getFullYear() === searchDateObj.getFullYear() &&
+                                    paymentDate.getMonth() === searchDateObj.getMonth() &&
+                                    paymentDate.getDate() === searchDateObj.getDate()
+                                );
+
                                 return matchesSearch && matchesDate;
                             })
                             .map(payment => (
@@ -105,8 +113,8 @@ const AdminPayments = () => {
                                         </span>
                                     </td>
                                     <td className="p-4 flex gap-2">
-                                        <button onClick={() => setSelectedTicket(payment)} className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-blue-500 transition">Ticket</button>
-                                        <button onClick={() => handleDelete(payment._id)} className="text-red-400 hover:text-red-300 font-bold text-xs ml-2 transition">Delete</button>
+                                        <button onClick={() => setSelectedTicket(payment)} className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-blue-500 transition cursor-pointer">Ticket</button>
+                                        <button onClick={() => handleDelete(payment._id)} className="text-red-400 hover:text-red-300 font-bold text-xs ml-2 transition cursor-pointer">Delete</button>
                                     </td>
                                 </tr>
                             ))}

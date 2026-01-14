@@ -8,6 +8,7 @@ const {
     sendMatchRescheduleNotification,
     sendRefundConfirmationNotification
 } = require('../utils/notificationService');
+const { logAction } = require('./auditLogController');
 
 // Helper function: Calculate match start time
 const getMatchStartTime = (match) => {
@@ -114,6 +115,15 @@ exports.createMatch = async (req, res) => {
 
         const newMatch = new Match(req.body);
         const match = await newMatch.save();
+
+        await logAction({
+            adminUser: req.user.id,
+            action: 'MATCH_CREATED',
+            details: `Created match: ${match.homeTeam} vs ${match.awayTeam} on ${match.date}`,
+            targetResource: `Match: ${match._id}`,
+            ipAddress: req.ip
+        });
+
         res.json(match);
     } catch (err) {
         console.error(err.message);
@@ -199,6 +209,14 @@ exports.cancelMatch = async (req, res) => {
             affectedBookings: bookings.length,
             notificationsSent
         });
+
+        await logAction({
+            adminUser: req.user.id,
+            action: 'MATCH_CANCELLED',
+            details: `Cancelled match: ${match.homeTeam} vs ${match.awayTeam}. Reason: ${cancellationReason}`,
+            targetResource: `Match: ${match._id}`,
+            ipAddress: req.ip
+        });
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');
@@ -270,6 +288,14 @@ exports.rescheduleMatch = async (req, res) => {
                 console.error('Failed to send notification:', notifErr.message);
             }
         }
+
+        await logAction({
+            adminUser: req.user.id,
+            action: 'MATCH_RESCHEDULED',
+            details: `Rescheduled match ${oldMatch._id} to new match ${newMatch._id} on ${newDate} ${newTime}`,
+            targetResource: `Match: ${oldMatch._id} -> ${newMatch._id}`,
+            ipAddress: req.ip
+        });
 
         res.json({
             message: 'Match rescheduled successfully',
@@ -343,6 +369,14 @@ exports.processMatchRefund = async (req, res) => {
                 }
             }
         }
+
+        await logAction({
+            adminUser: req.user.id,
+            action: 'REFUND_PROCESSED',
+            details: `Processed refunds for match ${match._id}. Total refunds: ${refundsProcessed}`,
+            targetResource: `Match: ${match._id}`,
+            ipAddress: req.ip
+        });
 
         res.json({
             message: 'Refunds processed successfully',

@@ -1,4 +1,7 @@
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const stripe = process.env.STRIPE_SECRET_KEY ? require('stripe')(process.env.STRIPE_SECRET_KEY) : null;
+if (!process.env.STRIPE_SECRET_KEY) {
+    console.warn("⚠️ STRIPE_SECRET_KEY is missing. Payment features will be disabled.");
+}
 const Booking = require('../models/Booking');
 const Payment = require('../models/Payment');
 const User = require('../models/User');
@@ -8,6 +11,10 @@ const sendEmail = require('../utils/emailService');
 exports.createPaymentIntent = async (req, res) => {
     try {
         const { bookingId, amount } = req.body;
+
+        if (!stripe) {
+            return res.status(503).json({ message: 'Stripe payments are not configured' });
+        }
 
         const paymentIntent = await stripe.paymentIntents.create({
             amount: Math.round(amount * 100),
@@ -86,6 +93,9 @@ exports.recordPayment = async (req, res) => {
         // Verify with Stripe if needed, or trust client for this demo scope if user just wants "flow"
         // Better to verify.
         if (paymentIntentId) {
+            if (!stripe) {
+                return res.status(503).json({ message: 'Stripe payments are not configured' });
+            }
             const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
             if (paymentIntent.status === 'succeeded') {
                 booking.paymentStatus = 'paid';
